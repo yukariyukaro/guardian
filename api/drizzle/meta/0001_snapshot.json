@@ -1,0 +1,795 @@
+{
+  "id": "930bab22-c57e-40d1-bd8a-99af9d72473e",
+  "prevId": "83ed321a-ac29-4809-afa3-0c10dc394838",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "internal_content.institution_drafts": {
+      "name": "institution_drafts",
+      "schema": "internal_content",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "slug": {
+          "name": "slug",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'DRAFT'"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "institution_drafts_slug_unique": {
+          "name": "institution_drafts_slug_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "slug"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public_content.institution_sources": {
+      "name": "institution_sources",
+      "schema": "public_content",
+      "columns": {
+        "institution_slug": {
+          "name": "institution_slug",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "source_key": {
+          "name": "source_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "visibility": {
+          "name": "visibility",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'DRAFT'"
+        }
+      },
+      "indexes": {
+        "institution_sources_public_reverse_idx": {
+          "name": "institution_sources_public_reverse_idx",
+          "columns": [
+            {
+              "expression": "source_key",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "institution_slug",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "where": "\"public_content\".\"institution_sources\".\"visibility\" = 'PUBLISHED'",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "institution_sources_institution_slug_published_institutions_slug_fk": {
+          "name": "institution_sources_institution_slug_published_institutions_slug_fk",
+          "tableFrom": "institution_sources",
+          "tableTo": "published_institutions",
+          "schemaTo": "public_content",
+          "columnsFrom": [
+            "institution_slug"
+          ],
+          "columnsTo": [
+            "slug"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "institution_sources_source_key_published_sources_public_key_fk": {
+          "name": "institution_sources_source_key_published_sources_public_key_fk",
+          "tableFrom": "institution_sources",
+          "tableTo": "published_sources",
+          "schemaTo": "public_content",
+          "columnsFrom": [
+            "source_key"
+          ],
+          "columnsTo": [
+            "public_key"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "institution_sources_institution_slug_source_key_pk": {
+          "name": "institution_sources_institution_slug_source_key_pk",
+          "columns": [
+            "institution_slug",
+            "source_key"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "institution_sources_visibility_check": {
+          "name": "institution_sources_visibility_check",
+          "value": "\"public_content\".\"institution_sources\".\"visibility\" IN ('DRAFT', 'PUBLISHED', 'TEMPORARILY_HIDDEN', 'WITHDRAWN')"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public_content.published_institutions": {
+      "name": "published_institutions",
+      "schema": "public_content",
+      "columns": {
+        "slug": {
+          "name": "slug",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "published_at": {
+          "name": "published_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "visibility": {
+          "name": "visibility",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'DRAFT'"
+        },
+        "aliases": {
+          "name": "aliases",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "region_code": {
+          "name": "region_code",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "region_name": {
+          "name": "region_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "region_province": {
+          "name": "region_province",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "region_city": {
+          "name": "region_city",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "operating_status": {
+          "name": "operating_status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "risk_tags": {
+          "name": "risk_tags",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "evidence_status": {
+          "name": "evidence_status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "public_summary": {
+          "name": "public_summary",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "last_reviewed_at": {
+          "name": "last_reviewed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "institutions_public_updated_idx": {
+          "name": "institutions_public_updated_idx",
+          "columns": [
+            {
+              "expression": "updated_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "slug",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "where": "\"public_content\".\"published_institutions\".\"visibility\" = 'PUBLISHED'",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "institutions_public_name_idx": {
+          "name": "institutions_public_name_idx",
+          "columns": [
+            {
+              "expression": "name",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "slug",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "where": "\"public_content\".\"published_institutions\".\"visibility\" = 'PUBLISHED'",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "institutions_public_region_idx": {
+          "name": "institutions_public_region_idx",
+          "columns": [
+            {
+              "expression": "region_code",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "where": "\"public_content\".\"published_institutions\".\"visibility\" = 'PUBLISHED'",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "institutions_public_filters_idx": {
+          "name": "institutions_public_filters_idx",
+          "columns": [
+            {
+              "expression": "evidence_status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "operating_status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "where": "\"public_content\".\"published_institutions\".\"visibility\" = 'PUBLISHED'",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "institutions_public_tags_idx": {
+          "name": "institutions_public_tags_idx",
+          "columns": [
+            {
+              "expression": "risk_tags",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "where": "\"public_content\".\"published_institutions\".\"visibility\" = 'PUBLISHED'",
+          "concurrently": false,
+          "method": "gin",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "institutions_visibility_check": {
+          "name": "institutions_visibility_check",
+          "value": "\"public_content\".\"published_institutions\".\"visibility\" IN ('DRAFT', 'PUBLISHED', 'TEMPORARILY_HIDDEN', 'WITHDRAWN')"
+        },
+        "institutions_published_complete": {
+          "name": "institutions_published_complete",
+          "value": "\"public_content\".\"published_institutions\".\"visibility\" <> 'PUBLISHED' OR (\"public_content\".\"published_institutions\".\"aliases\" IS NOT NULL AND \"public_content\".\"published_institutions\".\"region_code\" IS NOT NULL AND \"public_content\".\"published_institutions\".\"region_name\" IS NOT NULL AND \"public_content\".\"published_institutions\".\"region_province\" IS NOT NULL AND \"public_content\".\"published_institutions\".\"operating_status\" IS NOT NULL AND \"public_content\".\"published_institutions\".\"risk_tags\" IS NOT NULL AND \"public_content\".\"published_institutions\".\"evidence_status\" IS NOT NULL AND \"public_content\".\"published_institutions\".\"public_summary\" IS NOT NULL AND \"public_content\".\"published_institutions\".\"last_reviewed_at\" IS NOT NULL)"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public_content.published_sources": {
+      "name": "published_sources",
+      "schema": "public_content",
+      "columns": {
+        "public_key": {
+          "name": "public_key",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "visibility": {
+          "name": "visibility",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'DRAFT'"
+        },
+        "title": {
+          "name": "title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "publisher": {
+          "name": "publisher",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "source_type": {
+          "name": "source_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "url": {
+          "name": "url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "published_on": {
+          "name": "published_on",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "summary": {
+          "name": "summary",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "evidence_status": {
+          "name": "evidence_status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "link_status": {
+          "name": "link_status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "archive_url": {
+          "name": "archive_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "last_checked_at": {
+          "name": "last_checked_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "sources_public_published_idx": {
+          "name": "sources_public_published_idx",
+          "columns": [
+            {
+              "expression": "published_on",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "public_key",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "where": "\"public_content\".\"published_sources\".\"visibility\" = 'PUBLISHED'",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "sources_public_updated_idx": {
+          "name": "sources_public_updated_idx",
+          "columns": [
+            {
+              "expression": "updated_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "public_key",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "where": "\"public_content\".\"published_sources\".\"visibility\" = 'PUBLISHED'",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "sources_public_filters_idx": {
+          "name": "sources_public_filters_idx",
+          "columns": [
+            {
+              "expression": "source_type",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "evidence_status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "where": "\"public_content\".\"published_sources\".\"visibility\" = 'PUBLISHED'",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "sources_public_key_check": {
+          "name": "sources_public_key_check",
+          "value": "\"public_content\".\"published_sources\".\"public_key\" ~ '^src-[a-z0-9]+(-[a-z0-9]+)*$' AND length(\"public_content\".\"published_sources\".\"public_key\") <= 120"
+        },
+        "sources_visibility_check": {
+          "name": "sources_visibility_check",
+          "value": "\"public_content\".\"published_sources\".\"visibility\" IN ('DRAFT', 'PUBLISHED', 'TEMPORARILY_HIDDEN', 'WITHDRAWN')"
+        },
+        "sources_published_complete": {
+          "name": "sources_published_complete",
+          "value": "\"public_content\".\"published_sources\".\"visibility\" <> 'PUBLISHED' OR (\"public_content\".\"published_sources\".\"title\" IS NOT NULL AND \"public_content\".\"published_sources\".\"publisher\" IS NOT NULL AND \"public_content\".\"published_sources\".\"source_type\" IS NOT NULL AND \"public_content\".\"published_sources\".\"url\" IS NOT NULL AND \"public_content\".\"published_sources\".\"summary\" IS NOT NULL AND \"public_content\".\"published_sources\".\"evidence_status\" IS NOT NULL AND \"public_content\".\"published_sources\".\"link_status\" IS NOT NULL AND \"public_content\".\"published_sources\".\"updated_at\" IS NOT NULL)"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public_content.published_timeline_events": {
+      "name": "published_timeline_events",
+      "schema": "public_content",
+      "columns": {
+        "public_key": {
+          "name": "public_key",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "institution_slug": {
+          "name": "institution_slug",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "visibility": {
+          "name": "visibility",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'DRAFT'"
+        },
+        "occurred_on": {
+          "name": "occurred_on",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "occurred_until": {
+          "name": "occurred_until",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "title": {
+          "name": "title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "summary": {
+          "name": "summary",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "evidence_status": {
+          "name": "evidence_status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "risk_tags": {
+          "name": "risk_tags",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "response_status": {
+          "name": "response_status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "last_reviewed_at": {
+          "name": "last_reviewed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "events_public_institution_date_idx": {
+          "name": "events_public_institution_date_idx",
+          "columns": [
+            {
+              "expression": "institution_slug",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "occurred_on",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "public_key",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "where": "\"public_content\".\"published_timeline_events\".\"visibility\" = 'PUBLISHED'",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "published_timeline_events_institution_slug_published_institutions_slug_fk": {
+          "name": "published_timeline_events_institution_slug_published_institutions_slug_fk",
+          "tableFrom": "published_timeline_events",
+          "tableTo": "published_institutions",
+          "schemaTo": "public_content",
+          "columnsFrom": [
+            "institution_slug"
+          ],
+          "columnsTo": [
+            "slug"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "events_public_key_check": {
+          "name": "events_public_key_check",
+          "value": "\"public_content\".\"published_timeline_events\".\"public_key\" ~ '^evt-[a-z0-9]+(-[a-z0-9]+)*$' AND length(\"public_content\".\"published_timeline_events\".\"public_key\") <= 120"
+        },
+        "events_visibility_check": {
+          "name": "events_visibility_check",
+          "value": "\"public_content\".\"published_timeline_events\".\"visibility\" IN ('DRAFT', 'PUBLISHED', 'TEMPORARILY_HIDDEN', 'WITHDRAWN')"
+        },
+        "events_date_range_check": {
+          "name": "events_date_range_check",
+          "value": "\"public_content\".\"published_timeline_events\".\"occurred_until\" IS NULL OR (\"public_content\".\"published_timeline_events\".\"occurred_on\" IS NOT NULL AND \"public_content\".\"published_timeline_events\".\"occurred_until\" >= \"public_content\".\"published_timeline_events\".\"occurred_on\")"
+        },
+        "events_published_complete": {
+          "name": "events_published_complete",
+          "value": "\"public_content\".\"published_timeline_events\".\"visibility\" <> 'PUBLISHED' OR (\"public_content\".\"published_timeline_events\".\"title\" IS NOT NULL AND \"public_content\".\"published_timeline_events\".\"summary\" IS NOT NULL AND \"public_content\".\"published_timeline_events\".\"evidence_status\" IS NOT NULL AND \"public_content\".\"published_timeline_events\".\"risk_tags\" IS NOT NULL AND \"public_content\".\"published_timeline_events\".\"response_status\" IS NOT NULL AND \"public_content\".\"published_timeline_events\".\"last_reviewed_at\" IS NOT NULL)"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public_content.timeline_sources": {
+      "name": "timeline_sources",
+      "schema": "public_content",
+      "columns": {
+        "event_key": {
+          "name": "event_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "source_key": {
+          "name": "source_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "visibility": {
+          "name": "visibility",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'DRAFT'"
+        }
+      },
+      "indexes": {
+        "timeline_sources_public_reverse_idx": {
+          "name": "timeline_sources_public_reverse_idx",
+          "columns": [
+            {
+              "expression": "source_key",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "event_key",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "where": "\"public_content\".\"timeline_sources\".\"visibility\" = 'PUBLISHED'",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "timeline_sources_event_key_published_timeline_events_public_key_fk": {
+          "name": "timeline_sources_event_key_published_timeline_events_public_key_fk",
+          "tableFrom": "timeline_sources",
+          "tableTo": "published_timeline_events",
+          "schemaTo": "public_content",
+          "columnsFrom": [
+            "event_key"
+          ],
+          "columnsTo": [
+            "public_key"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "timeline_sources_source_key_published_sources_public_key_fk": {
+          "name": "timeline_sources_source_key_published_sources_public_key_fk",
+          "tableFrom": "timeline_sources",
+          "tableTo": "published_sources",
+          "schemaTo": "public_content",
+          "columnsFrom": [
+            "source_key"
+          ],
+          "columnsTo": [
+            "public_key"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "timeline_sources_event_key_source_key_pk": {
+          "name": "timeline_sources_event_key_source_key_pk",
+          "columns": [
+            "event_key",
+            "source_key"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "timeline_sources_visibility_check": {
+          "name": "timeline_sources_visibility_check",
+          "value": "\"public_content\".\"timeline_sources\".\"visibility\" IN ('DRAFT', 'PUBLISHED', 'TEMPORARILY_HIDDEN', 'WITHDRAWN')"
+        }
+      },
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {},
+  "schemas": {
+    "internal_content": "internal_content",
+    "public_content": "public_content"
+  },
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}

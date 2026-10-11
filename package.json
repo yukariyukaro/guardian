@@ -1,0 +1,20 @@
+{
+  "name": "guardian-platform",
+  "version": "0.0.0",
+  "private": true,
+  "packageManager": "pnpm@10.15.0",
+  "engines": {
+    "node": ">=22.12.0",
+    "pnpm": ">=10.15.0"
+  },
+  "scripts": {
+    "install:check": "pnpm --version && node --version",
+    "typecheck": "pnpm --filter @guardian/web typecheck && pnpm --filter @guardian/api typecheck",
+    "test": "pnpm --filter @guardian/web test && pnpm --filter @guardian/api test",
+    "lint": "pnpm --filter @guardian/web lint",
+    "build": "pnpm --filter @guardian/web build && pnpm --filter @guardian/api build",
+    "contracts:check": "pnpm --filter @guardian/api openapi:check",
+    "privacy": "node --test scripts/check-privacy.test.mjs && node scripts/check-privacy.mjs",
+    "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm contracts:check && pnpm build && pnpm privacy"
+  }
+}

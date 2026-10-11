@@ -1,0 +1,814 @@
+openapi: 3.1.0
+info:
+  title: Guardian Public Read API
+  version: 0.1.0
+  description: |
+    公共读取接口的 contract-first 骨架，不包含管理、投稿或写入接口。
+    仅允许人工终审后 PUBLISHED 且可公开的内容。所有示例均为虚构演示，
+    不对应真实机构或个人；example.invalid 链接不可作为实际证据。
+    证据状态描述来源支撑程度，风险标签是信息分类，不是定罪或风险评分。
+    所有查询参数仅接受单值，重复或未知参数（包括 visibility）返回 400。
+    数字查询参数为十进制整数，不静默纠正非法值；metadata 不接受查询参数。
+servers:
+  - url: /
+    description: 同源 API；不约定部署域名
+tags:
+  - name: Institutions
+    description: 机构公开档案
+  - name: Sources
+    description: 公开来源索引
+  - name: Metadata
+    description: 公共枚举、地区及展示说明
+security: []
+paths:
+  /api/v1/public/institutions:
+    get:
+      operationId: listPublicInstitutions
+      tags: [Institutions]
+      summary: 获取机构公开列表
+      description: |
+        q 匹配公开名称和别名；筛选条件之间为 AND；risk_tag 为单一精确标签。
+        region 精确匹配 metadata.regions 的 code。默认 updated_desc，
+        更新时间相同时以 slug 升序稳定排序。仅统计公开可见记录。
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+        - $ref: '#/components/parameters/Query'
+        - $ref: '#/components/parameters/Region'
+        - $ref: '#/components/parameters/RiskTag'
+        - $ref: '#/components/parameters/EvidenceStatus'
+        - $ref: '#/components/parameters/OperatingStatus'
+        - name: sort
+          in: query
+          schema:
+            type: string
+            enum: [updated_desc, updated_asc, name_asc]
+            default: updated_desc
+      responses:
+        '200':
+          description: 公开列表；无匹配或页码超出总页数时返回空 data 和实际分页信息
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InstitutionListResponse'
+              examples:
+                fictional:
+                  $ref: '#/components/examples/InstitutionList'
+                empty:
+                  $ref: '#/components/examples/EmptyList'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /api/v1/public/institutions/{slug}:
+    get:
+      operationId: getPublicInstitution
+      tags: [Institutions]
+      summary: 获取单个机构公开档案
+      description: 不存在、草稿、隐藏或撤回记录均返回相同的 NOT_FOUND，不泄露私有状态。
+      parameters:
+        - $ref: '#/components/parameters/InstitutionSlug'
+      responses:
+        '200':
+          description: 严格公开投影，与列表使用相同 PublicInstitution DTO
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InstitutionDetailResponse'
+              examples:
+                fictional:
+                  $ref: '#/components/examples/InstitutionDetail'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /api/v1/public/institutions/{slug}/timeline:
+    get:
+      operationId: listPublicInstitutionTimeline
+      tags: [Institutions]
+      summary: 获取机构公开事件时间线
+      description: |
+        先检查父机构是否公开可见，否则统一返回 404。只返回公开事件和公开来源引用。
+        按 occurred_on 排序，未知日期始终排末尾，同日期以 id 升序稳定排序。
+        pending_verification 只允许不含具体指控的中立占位说明。
+      parameters:
+        - $ref: '#/components/parameters/InstitutionSlug'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+        - name: sort
+          in: query
+          schema:
+            type: string
+            enum: [date_desc, date_asc]
+            default: date_desc
+      responses:
+        '200':
+          description: 统一分页的公开事件列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TimelineListResponse'
+              examples:
+                fictional:
+                  $ref: '#/components/examples/TimelineList'
+                empty:
+                  $ref: '#/components/examples/EmptyList'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /api/v1/public/institutions/{slug}/sources:
+    get:
+      operationId: listPublicInstitutionSources
+      tags: [Institutions, Sources]
+      summary: 获取机构关联的公开来源
+      description: |
+        先检查父机构公开可见性，否则返回 404。只返回公开来源，分页和排序与来源总列表一致。
+        q 匹配公开标题和发布者；筛选条件之间为 AND。未知发布日期始终排末尾，
+        主排序键相同时以 id 升序稳定排序。
+      parameters:
+        - $ref: '#/components/parameters/InstitutionSlug'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+        - $ref: '#/components/parameters/Query'
+        - $ref: '#/components/parameters/SourceType'
+        - $ref: '#/components/parameters/EvidenceStatus'
+        - $ref: '#/components/parameters/SourceSort'
+      responses:
+        '200':
+          description: 统一分页的公开来源列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SourceListResponse'
+              examples:
+                fictional:
+                  $ref: '#/components/examples/SourceList'
+                empty:
+                  $ref: '#/components/examples/EmptyList'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /api/v1/public/sources:
+    get:
+      operationId: listPublicSources
+      tags: [Sources]
+      summary: 获取公开来源总列表
+      description: |
+        q 匹配公开标题和发布者；筛选条件之间为 AND。institution_slug 只匹配公开机构关联，
+        不可见或不存在机构的筛选结果为空，不泄露其存在性。未知发布日期始终排末尾，
+        主排序键相同时以 id 升序稳定排序。
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+        - $ref: '#/components/parameters/Query'
+        - name: institution_slug
+          in: query
+          description: 公开机构 slug，不接受内部 UUID
+          schema:
+            $ref: '#/components/schemas/InstitutionSlug'
+        - $ref: '#/components/parameters/SourceType'
+        - $ref: '#/components/parameters/EvidenceStatus'
+        - $ref: '#/components/parameters/SourceSort'
+      responses:
+        '200':
+          description: 统一分页的公开来源列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SourceListResponse'
+              examples:
+                fictional:
+                  $ref: '#/components/examples/SourceList'
+                empty:
+                  $ref: '#/components/examples/EmptyList'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /api/v1/public/sources/{id}:
+    get:
+      operationId: getPublicSource
+      tags: [Sources]
+      summary: 获取公开来源详情
+      description: 不存在、草稿、隐藏或撤回记录均返回相同的 NOT_FOUND，不泄露私有状态。
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: 独立稳定的公开来源 key，不是内部数据库 ID 或 UUID
+          schema:
+            $ref: '#/components/schemas/SourceId'
+      responses:
+        '200':
+          description: 严格公开投影，与列表使用相同 PublicSource DTO
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SourceDetailResponse'
+              examples:
+                fictional:
+                  $ref: '#/components/examples/SourceDetail'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /api/v1/public/metadata:
+    get:
+      operationId: getPublicMetadata
+      tags: [Metadata]
+      summary: 获取筛选字典及中立展示说明
+      description: |
+        枚举值与本契约完全一致，标签与说明供前端展示；不得传出私有审核状态。
+        地区字典只包含已公开档案使用的粗粒度地区，无地址、坐标或个人信息。
+      responses:
+        '200':
+          description: 公开字典（不分页）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MetadataResponse'
+              examples:
+                fictional:
+                  $ref: '#/components/examples/Metadata'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+components:
+  parameters:
+    Page:
+      name: page
+      in: query
+      description: 从 1 开始的页码；非法值返回 400，不静默纠正
+      schema: {type: integer, minimum: 1, maximum: 1000000, default: 1}
+    PageSize:
+      name: page_size
+      in: query
+      description: 每页数量；超过上限返回 400，不静默截断
+      schema: {type: integer, minimum: 1, maximum: 50, default: 20}
+    Query:
+      name: q
+      in: query
+      description: 纯文本关键词，去除首尾空白；空字符串不筛选，不作为 HTML 或查询表达式执行
+      schema: {type: string, maxLength: 100}
+    Region:
+      name: region
+      in: query
+      description: metadata.regions 的 code；未知 code 返回 400
+      schema: {type: string, minLength: 1, maxLength: 64, pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$'}
+    RiskTag:
+      name: risk_tag
+      in: query
+      description: 单个风险分类，不表示定罪
+      schema:
+        $ref: '#/components/schemas/RiskTag'
+    EvidenceStatus:
+      name: evidence_status
+      in: query
+      schema:
+        $ref: '#/components/schemas/EvidenceStatus'
+    OperatingStatus:
+      name: operating_status
+      in: query
+      schema:
+        $ref: '#/components/schemas/OperatingStatus'
+    InstitutionSlug:
+      name: slug
+      in: path
+      required: true
+      description: 稳定公开 slug，与内部主键隔离；不存在或不可见统一 404
+      schema:
+        $ref: '#/components/schemas/InstitutionSlug'
+    SourceType:
+      name: source_type
+      in: query
+      schema:
+        $ref: '#/components/schemas/SourceType'
+    SourceSort:
+      name: sort
+      in: query
+      schema:
+        type: string
+        enum: [published_desc, published_asc, updated_desc]
+        default: published_desc
+  schemas:
+    InstitutionSlug:
+      type: string
+      minLength: 1
+      maxLength: 120
+      pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$'
+      description: 独立分配的公开 URL slug，禁止使用内部 UUID
+      examples: [fictional-mist-harbor-center]
+    SourceId:
+      type: string
+      minLength: 5
+      maxLength: 120
+      pattern: '^src-[a-z0-9]+(?:-[a-z0-9]+)*$'
+      description: 稳定公开来源 key，不与内部主键相同
+      examples: [src-fictional-demo-notice]
+    EventId:
+      type: string
+      minLength: 5
+      maxLength: 120
+      pattern: '^evt-[a-z0-9]+(?:-[a-z0-9]+)*$'
+      description: 稳定公开事件 key，不与内部主键相同
+      examples: [evt-fictional-demo-notice]
+    EvidenceStatus:
+      type: string
+      enum: [official_record, multiple_sources, single_source, first_person_statement, pending_verification]
+      description: |
+        official_record=官方记录；multiple_sources=多个独立来源；single_source=单一可靠来源；
+        first_person_statement=当事人陈述（未独立确认）；pending_verification=待核实。
+        不是真实性评分、司法结论或审核状态。待核实不允许公开具体指控和线索细节。
+    RiskTag:
+      type: string
+      enum: [physical_abuse, restriction_of_freedom, medical_practices, fee_dispute, regulatory_action, judicial_record, name_or_location_change, no_public_response]
+      description: 中立风险信息分类；不得据此推断机构或个人有罪
+    OperatingStatus:
+      type: string
+      enum: [operating, closed, relocated, unknown]
+      description: 公开可确认的运营状态；缺乏可靠资料时使用 unknown，不凭空推断
+    SourceType:
+      type: string
+      enum: [news, video, judgment, notice, report, statement]
+    LinkStatus:
+      type: string
+      enum: [unchecked, accessible, redirected, unavailable, manual_review]
+    PublicRegion:
+      type: object
+      additionalProperties: false
+      required: [code, name, province, city]
+      properties:
+        code: {type: string, minLength: 1, maxLength: 64, pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$'}
+        name: {type: string, minLength: 1, maxLength: 100}
+        province: {type: string, minLength: 1, maxLength: 100}
+        city: {type: [string, 'null'], minLength: 1, maxLength: 100}
+      description: 只公开粗粒度地区；city 未知为 null，不含地址或坐标
+    PublicInstitution:
+      type: object
+      additionalProperties: false
+      required: [slug, name, aliases, region, operating_status, risk_tags, evidence_status, public_summary, source_count, last_reviewed_at, updated_at]
+      properties:
+        slug:
+          $ref: '#/components/schemas/InstitutionSlug'
+        name: {type: string, minLength: 1, maxLength: 200}
+        aliases:
+          type: array
+          uniqueItems: true
+          items: {type: string, minLength: 1, maxLength: 200}
+        region:
+          $ref: '#/components/schemas/PublicRegion'
+        operating_status:
+          $ref: '#/components/schemas/OperatingStatus'
+        risk_tags:
+          type: array
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/RiskTag'
+        evidence_status:
+          $ref: '#/components/schemas/EvidenceStatus'
+        public_summary: {type: string, minLength: 1, maxLength: 2000, description: 人工终审后的中立纯文本摘要}
+        source_count: {type: integer, minimum: 0, description: 仅计数公开可见关联来源}
+        last_reviewed_at: {type: string, format: date-time, description: 最近公开内容复核时间，不含审核人员身份或笔记}
+        updated_at: {type: string, format: date-time, description: 公开版本的更新时间，不因私有审核活动而变化}
+      description: 严格字段白名单；无内部主键、联系方式、精确位置或私有审核数据
+    PublicSource:
+      type: object
+      additionalProperties: false
+      required: [id, title, publisher, source_type, url, published_on, summary, evidence_status, link_status, archive_url, institution_slugs, last_checked_at, updated_at]
+      properties:
+        id:
+          $ref: '#/components/schemas/SourceId'
+        title: {type: string, minLength: 1, maxLength: 300}
+        publisher: {type: string, minLength: 1, maxLength: 200, description: 公开发布组织名称，不附个人联系方式}
+        source_type:
+          $ref: '#/components/schemas/SourceType'
+        url: {type: string, format: uri, maxLength: 2048, pattern: '^https?://', description: 人工检查可公开的 http/https 外部链接；禁止私有存储或带访问凭据的链接}
+        published_on: {type: [string, 'null'], format: date, description: 来源发布日期，未知为 null，不伪造完整日期}
+        summary: {type: string, minLength: 1, maxLength: 2000, description: 中立纯文本摘要，不包含未经核实具体指控或敏感引述}
+        evidence_status:
+          $ref: '#/components/schemas/EvidenceStatus'
+        link_status:
+          $ref: '#/components/schemas/LinkStatus'
+        archive_url: {type: [string, 'null'], format: uri, maxLength: 2048, pattern: '^https?://', description: 仅经审核可公开的存档链接；不可用为 null，不返回内部存储路径}
+        institution_slugs:
+          type: array
+          uniqueItems: true
+          description: 仅公开可见的机构关联；不得泄露隐藏机构 slug
+          items:
+            $ref: '#/components/schemas/InstitutionSlug'
+        last_checked_at: {type: [string, 'null'], format: date-time, description: 未检查为 null}
+        updated_at: {type: string, format: date-time}
+      description: 仅索引公开链接、元数据和安全摘要，不含原始投稿、附件或私人信息
+    PublicTimelineEvent:
+      type: object
+      additionalProperties: false
+      required: [id, institution_slug, occurred_on, occurred_until, title, summary, evidence_status, risk_tags, source_ids, response_status, last_reviewed_at]
+      properties:
+        id:
+          $ref: '#/components/schemas/EventId'
+        institution_slug:
+          $ref: '#/components/schemas/InstitutionSlug'
+        occurred_on: {type: [string, 'null'], format: date, description: 起始日期；未知为 null}
+        occurred_until: {type: [string, 'null'], format: date, description: 区间结束日期；非区间或未知为 null，非空时起始日期必须非空且结束不早于起始}
+        title: {type: string, minLength: 1, maxLength: 200}
+        summary: {type: string, minLength: 1, maxLength: 2000, description: 人工终审后的中立纯文本事件说明}
+        evidence_status:
+          $ref: '#/components/schemas/EvidenceStatus'
+        risk_tags:
+          type: array
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/RiskTag'
+        source_ids:
+          type: array
+          uniqueItems: true
+          description: 只能引用当前公开可见来源；非待核实事件至少有一个公开来源，不能由隐藏来源支撑公开指控
+          items:
+            $ref: '#/components/schemas/SourceId'
+        response_status:
+          type: string
+          enum: [none, available, linked]
+          description: none=尚无公开回应；available=已有公开回应；linked=回应来源已纳入 source_ids。不得返回私有来信或身份信息
+        last_reviewed_at: {type: string, format: date-time}
+    Pagination:
+      type: object
+      additionalProperties: false
+      required: [page, page_size, total, total_pages]
+      properties:
+        page: {type: integer, minimum: 1, maximum: 1000000}
+        page_size: {type: integer, minimum: 1, maximum: 50}
+        total: {type: integer, minimum: 0}
+        total_pages: {type: integer, minimum: 0}
+      description: total 为全部公开匹配条数；total_pages=ceil(total/page_size)，无匹配为 0；page 保留请求值
+    InstitutionListResponse:
+      type: object
+      additionalProperties: false
+      required: [data, pagination]
+      properties:
+        data:
+          type: array
+          maxItems: 50
+          items:
+            $ref: '#/components/schemas/PublicInstitution'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+    InstitutionDetailResponse:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/PublicInstitution'
+    SourceListResponse:
+      type: object
+      additionalProperties: false
+      required: [data, pagination]
+      properties:
+        data:
+          type: array
+          maxItems: 50
+          items:
+            $ref: '#/components/schemas/PublicSource'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+    SourceDetailResponse:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/PublicSource'
+    TimelineListResponse:
+      type: object
+      additionalProperties: false
+      required: [data, pagination]
+      properties:
+        data:
+          type: array
+          maxItems: 50
+          items:
+            $ref: '#/components/schemas/PublicTimelineEvent'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+    PublicMetadata:
+      type: object
+      additionalProperties: false
+      required: [contract_version, regions, evidence_statuses, risk_tags, operating_statuses, source_types]
+      properties:
+        contract_version: {type: string, const: '0.1.0'}
+        regions:
+          type: array
+          items:
+            $ref: '#/components/schemas/PublicRegion'
+        evidence_statuses:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [value, label, description]
+            properties:
+              value:
+                $ref: '#/components/schemas/EvidenceStatus'
+              label: {type: string, minLength: 1}
+              description: {type: string, minLength: 1}
+        risk_tags:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [value, label, description]
+            properties:
+              value:
+                $ref: '#/components/schemas/RiskTag'
+              label: {type: string, minLength: 1}
+              description: {type: string, minLength: 1}
+        operating_statuses:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [value, label, description]
+            properties:
+              value:
+                $ref: '#/components/schemas/OperatingStatus'
+              label: {type: string, minLength: 1}
+              description: {type: string, minLength: 1}
+        source_types:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [value, label, description]
+            properties:
+              value:
+                $ref: '#/components/schemas/SourceType'
+              label: {type: string, minLength: 1}
+              description: {type: string, minLength: 1}
+      description: 各枚举字典必须完整且 value 不重复；regions.code 不重复；标签为展示文案，筛选传 value/code
+    MetadataResponse:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/PublicMetadata'
+    ErrorCode:
+      type: string
+      enum: [VALIDATION_ERROR, NOT_FOUND, RATE_LIMITED, INTERNAL_ERROR, SERVICE_UNAVAILABLE]
+    ErrorDetail:
+      type: object
+      additionalProperties: false
+      required: [field, message]
+      properties:
+        field: {type: string, maxLength: 120, description: 公开参数名，不包含内部字段或提交值}
+        message: {type: string, minLength: 1, maxLength: 300, description: 安全校验提示，不回显用户输入}
+    ErrorResponse:
+      type: object
+      additionalProperties: false
+      required: [error]
+      properties:
+        error:
+          type: object
+          additionalProperties: false
+          required: [code, message, details]
+          properties:
+            code:
+              $ref: '#/components/schemas/ErrorCode'
+            message: {type: string, minLength: 1, maxLength: 300, description: 面向公众的安全提示，无堆栈、SQL、私有状态或原始输入}
+            details:
+              type: array
+              items:
+                $ref: '#/components/schemas/ErrorDetail'
+      description: code 为稳定机器码；message 为可本地化安全文本；无明细时 details=[]
+  headers:
+    PublicRequestId:
+      description: 可选独立公开请求标识，仅供错误关联，不编码内部主键、身份或审核信息；不放入 JSON DTO
+      schema: {type: string, minLength: 1, maxLength: 120, pattern: '^[A-Za-z0-9_-]+$'}
+  responses:
+    ValidationError:
+      description: 参数格式、枚举、边界、重复参数或未知查询参数错误；code 固定为 VALIDATION_ERROR
+      headers:
+        x-request-id:
+          $ref: '#/components/headers/PublicRequestId'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              code: VALIDATION_ERROR
+              message: 请求参数不符合公开接口契约。
+              details:
+                - field: page_size
+                  message: page_size 必须是 1 到 50 的整数。
+    NotFound:
+      description: 资源不存在或不可公开；两种情况相同响应，code 固定为 NOT_FOUND
+      headers:
+        x-request-id:
+          $ref: '#/components/headers/PublicRequestId'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: {code: NOT_FOUND, message: 未找到可公开的资源。, details: []}
+    RateLimited:
+      description: 请求频率超限，code 固定为 RATE_LIMITED；Retry-After 为建议等待秒数
+      headers:
+        x-request-id:
+          $ref: '#/components/headers/PublicRequestId'
+        Retry-After:
+          description: 正整数秒数，不包含内部限流策略或身份信息
+          schema: {type: integer, minimum: 1}
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: {code: RATE_LIMITED, message: 请求过于频繁，请稍后重试。, details: []}
+    InternalError:
+      description: 服务端异常，code 固定为 INTERNAL_ERROR；不得公开堆栈或内部关联信息
+      headers:
+        x-request-id:
+          $ref: '#/components/headers/PublicRequestId'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: {code: INTERNAL_ERROR, message: 服务暂时不可用，请稍后重试。, details: []}
+    ServiceUnavailable:
+      description: 服务或依赖暂未就绪，code 固定为 SERVICE_UNAVAILABLE；不透露数据库配置或内部依赖状态
+      headers:
+        x-request-id:
+          $ref: '#/components/headers/PublicRequestId'
+        Retry-After:
+          description: 可选建议等待秒数，不暴露内部恢复策略
+          schema: {type: integer, minimum: 1}
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: {code: SERVICE_UNAVAILABLE, message: 服务暂时不可用，请稍后重试。, details: []}
+  examples:
+    InstitutionList:
+      summary: 完全虚构的机构列表
+      value:
+        data:
+          - slug: fictional-mist-harbor-center
+            name: 虚构示例·雾港成长中心
+            aliases: [虚构示例·雾港旧称]
+            region: {code: fictional-mist-region, name: 虚构雾省雾港市, province: 虚构雾省, city: 虚构雾港市}
+            operating_status: unknown
+            risk_tags: [regulatory_action]
+            evidence_status: official_record
+            public_summary: 完全虚构的演示档案，仅用于测试公开字段和来源索引，不对应任何真实机构或事实。
+            source_count: 1
+            last_reviewed_at: '2026-01-05T08:00:00Z'
+            updated_at: '2026-01-05T08:00:00Z'
+        pagination: {page: 1, page_size: 20, total: 1, total_pages: 1}
+    InstitutionDetail:
+      summary: 完全虚构的机构详情
+      value:
+        data:
+          slug: fictional-mist-harbor-center
+          name: 虚构示例·雾港成长中心
+          aliases: [虚构示例·雾港旧称]
+          region: {code: fictional-mist-region, name: 虚构雾省雾港市, province: 虚构雾省, city: 虚构雾港市}
+          operating_status: unknown
+          risk_tags: [regulatory_action]
+          evidence_status: official_record
+          public_summary: 完全虚构的演示档案，仅用于测试公开字段和来源索引，不对应任何真实机构或事实。
+          source_count: 1
+          last_reviewed_at: '2026-01-05T08:00:00Z'
+          updated_at: '2026-01-05T08:00:00Z'
+    SourceList:
+      summary: 完全虚构的来源列表，保留域名链接不可作为真实证据
+      value:
+        data:
+          - id: src-fictional-demo-notice
+            title: 虚构示例·雾港资料演示通告
+            publisher: 虚构示例·雾省资料演示署
+            source_type: notice
+            url: https://example.invalid/fictional/demo-notice
+            published_on: '2026-01-01'
+            summary: 完全虚构的通告标题与摘要，用于演示来源索引，不存在对应真实通告或机构。
+            evidence_status: official_record
+            link_status: unchecked
+            archive_url: null
+            institution_slugs: [fictional-mist-harbor-center]
+            last_checked_at: null
+            updated_at: '2026-01-05T08:00:00Z'
+        pagination: {page: 1, page_size: 20, total: 1, total_pages: 1}
+    SourceDetail:
+      summary: 完全虚构的来源详情
+      value:
+        data:
+          id: src-fictional-demo-notice
+          title: 虚构示例·雾港资料演示通告
+          publisher: 虚构示例·雾省资料演示署
+          source_type: notice
+          url: https://example.invalid/fictional/demo-notice
+          published_on: '2026-01-01'
+          summary: 完全虚构的通告标题与摘要，用于演示来源索引，不存在对应真实通告或机构。
+          evidence_status: official_record
+          link_status: unchecked
+          archive_url: null
+          institution_slugs: [fictional-mist-harbor-center]
+          last_checked_at: null
+          updated_at: '2026-01-05T08:00:00Z'
+    TimelineList:
+      summary: 完全虚构的事件时间线
+      value:
+        data:
+          - id: evt-fictional-demo-notice
+            institution_slug: fictional-mist-harbor-center
+            occurred_on: '2026-01-01'
+            occurred_until: null
+            title: 虚构示例·资料演示通告发布
+            summary: 完全虚构的事件占位内容，仅演示日期、证据状态与公开来源引用，不陈述真实指控。
+            evidence_status: official_record
+            risk_tags: [regulatory_action]
+            source_ids: [src-fictional-demo-notice]
+            response_status: none
+            last_reviewed_at: '2026-01-05T08:00:00Z'
+        pagination: {page: 1, page_size: 20, total: 1, total_pages: 1}
+    EmptyList:
+      summary: 无匹配记录的正常成功响应
+      value:
+        data: []
+        pagination: {page: 1, page_size: 20, total: 0, total_pages: 0}
+    Metadata:
+      summary: 完整枚举与完全虚构地区字典
+      value:
+        data:
+          contract_version: '0.1.0'
+          regions:
+            - {code: fictional-mist-region, name: 虚构雾省雾港市, province: 虚构雾省, city: 虚构雾港市}
+          evidence_statuses:
+            - {value: official_record, label: 官方记录, description: 存在公开官方文件，不等同于司法定罪。}
+            - {value: multiple_sources, label: 多源报道, description: 多个相互独立的公开来源，不等同于真实性评分。}
+            - {value: single_source, label: 单一可靠来源, description: 仅有单一较可信公开来源，需保留局限说明。}
+            - {value: first_person_statement, label: 当事人陈述, description: 当事人公开陈述，尚未独立确认，不公开私人身份或联系方式。}
+            - {value: pending_verification, label: 待核实, description: 仅公开中立占位说明，不公开具体指控或原始线索。}
+          risk_tags:
+            - {value: physical_abuse, label: 暴力或体罚争议, description: 公开资料涉及相关争议，不代表认定有罪。}
+            - {value: restriction_of_freedom, label: 人身自由限制争议, description: 公开资料涉及相关争议，不代表认定有罪。}
+            - {value: medical_practices, label: 医疗或用药争议, description: 公开资料涉及相关争议，不代表认定有罪。}
+            - {value: fee_dispute, label: 收费或退费纠纷, description: 公开资料涉及相关纠纷，不代表认定有罪。}
+            - {value: regulatory_action, label: 监管记录, description: 存在相关公开监管资料，具体事实以来源为准。}
+            - {value: judicial_record, label: 司法记录, description: 存在相关公开司法资料，不自动推断机构或个人有罪。}
+            - {value: name_or_location_change, label: 更名或迁址记录, description: 公开资料中的名称或粗粒度地区变动。}
+            - {value: no_public_response, label: 尚无公开回应, description: 当前公开资料未包含回应，不代表拒绝回应或承认指控。}
+          operating_statuses:
+            - {value: operating, label: 运营中, description: 有公开资料支持当前仍在运营。}
+            - {value: closed, label: 已关闭, description: 有公开资料支持已停止运营。}
+            - {value: relocated, label: 已迁址, description: 有公开资料支持迁址，不展示精确地址。}
+            - {value: unknown, label: 未知, description: 缺乏可靠资料，不能推断当前运营情况。}
+          source_types:
+            - {value: news, label: 新闻, description: 公开新闻报道索引。}
+            - {value: video, label: 视频, description: 公开视频链接索引，不转载敏感内容。}
+            - {value: judgment, label: 司法文件, description: 可公开司法文件索引。}
+            - {value: notice, label: 通告, description: 公开通告索引。}
+            - {value: report, label: 报告, description: 公开报告索引。}
+            - {value: statement, label: 声明, description: 公开声明或回应索引。}

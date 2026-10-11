@@ -1,0 +1,42 @@
+{
+  "name": "@guardian/api",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.12.0",
+    "pnpm": ">=10.15.0"
+  },
+  "scripts": {
+    "contracts:generate": "openapi-typescript ../contracts/openapi.yaml -o src/infrastructure/openapi/generated.ts",
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc -p tsconfig.build.json",
+    "start": "node dist/server.js",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "tsx --test test/*.test.ts",
+    "check": "pnpm typecheck && pnpm test && pnpm openapi:check && pnpm build",
+    "openapi:check": "tsx scripts/check-openapi.ts",
+    "db:generate": "drizzle-kit generate --config=drizzle.config.ts",
+    "db:migrate": "tsx scripts/db-migrate.ts",
+    "db:bootstrap": "tsx scripts/db-bootstrap.ts",
+    "db:synthetic-seed": "tsx scripts/db-synthetic-seed.ts",
+    "test:integration": "tsx --test test/integration/*.test.ts"
+  },
+  "dependencies": {
+    "ajv": "^8.17.1",
+    "ajv-formats": "^3.0.1",
+    "drizzle-orm": "^0.44.5",
+    "fastify": "^5.12.5",
+    "pg": "^8.16.3",
+    "yaml": "^2.8.1"
+  },
+  "devDependencies": {
+    "@apidevtools/swagger-parser": "^12.1.0",
+    "@types/node": "^22.18.8",
+    "@types/pg": "^8.15.5",
+    "drizzle-kit": "^0.31.5",
+    "openapi-typescript": "^7.10.1",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3"
+  }
+}

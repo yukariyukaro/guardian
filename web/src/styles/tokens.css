@@ -1,0 +1,35 @@
+:root {
+  color-scheme: light;
+  --paper-50: #f8f6ef;
+  --paper-100: #efece2;
+  --paper-white: #fffefa;
+  --ink-950: #202b32;
+  --navy-800: #142c42;
+  --blue-600: #215d8d;
+  --slate-500: #5e6c73;
+  --line: #d4d6ce;
+  --amber-600: #855909;
+  --amber-50: #fff3d6;
+  --sage-600: #38614c;
+  --sage-50: #e7f0e8;
+  --red-600: #a6372e;
+  --font-body: 'Noto Sans SC', 'Microsoft YaHei', 'PingFang SC', sans-serif;
+  --font-display: 'Noto Serif SC', 'Source Han Serif SC', 'Songti SC', SimSun, serif;
+  --font-mono: 'IBM Plex Mono', Consolas, 'Courier New', monospace;
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --space-7: 3rem;
+  --space-8: 4.5rem;
+  --radius-sm: 0.25rem;
+  --radius-md: 0.5rem;
+  --content-width: 76rem;
+  --shadow-paper: 0 6px 20px rgb(20 44 66 / 5%);
+  --duration-fast: 180ms;
+  --ease-out: cubic-bezier(0.2, 0.65, 0.3, 1);
+}
+
+/* No third-party font requests. Named fonts use locally available installations. */
